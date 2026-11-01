@@ -380,20 +380,20 @@ for crdroid_soc in sm7550 sm8550 sm8650; do
   [[ "$(zeromount_patch_sha256 "${SUSFS_REF#gki-}")" =~ ^[0-9a-f]{64}$ ]] \
     || fail "crDroid 13 $crdroid_soc ZeroMount patch mapping"
 done
-assert_eq "2c774fdb4f0aaa743598c1bec787f6c935574ed1" \
+assert_eq "7b08b969e3577d282b352a267cb343b02b707d2a" \
   "$(su_session_compatible_susfs_commit gki-android13-5.10)" "SukiSU Android 13 5.10 SUSFS pin"
-assert_eq "7af04b08f86a5f811cbea28805f96d52368e005f" \
+assert_eq "adaef1c599e770707311ad36b015a0de3f30ac28" \
   "$(su_session_compatible_susfs_commit gki-android13-5.15)" "SukiSU Android 13 5.15 SUSFS pin"
-assert_eq "aab99ba7693d94489fd32f1cc4c9d58396fffeee" \
+assert_eq "ffa69590787d097f54cb60ed79fa6fd5e285bb41" \
   "$(su_session_compatible_susfs_commit gki-android14-5.15)" "SukiSU Android 14 5.15 SUSFS pin"
-assert_eq "6c2b5042ec656cd3ce9ad352a1e226e2e9e26779" \
+assert_eq "2e9f720d3af25e2c6678633cc5be82edae9708b3" \
   "$(su_session_compatible_susfs_commit gki-android14-6.1)" "SukiSU Android 14 6.1 SUSFS pin"
 if su_session_compatible_susfs_commit unsupported >/dev/null 2>&1; then
   fail "unknown SukiSU SUSFS branches must not silently fall back to HEAD"
 fi
-version_is_at_least 2.2.0 2.2.0 || fail "SUSFS minimum version equality"
-version_is_at_least 2.3.0 2.2.0 || fail "SUSFS newer version acceptance"
-if version_is_at_least 2.1.9 2.2.0; then
+version_is_at_least 2.3.0 2.3.0 || fail "SUSFS minimum version equality"
+version_is_at_least 2.3.1 2.3.0 || fail "SUSFS newer version acceptance"
+if version_is_at_least 2.2.9 2.3.0; then
   fail "SUSFS old version rejection"
 fi
 
@@ -609,6 +609,13 @@ for suki_preset in \
   GITHUB_OUTPUT="$RESOLVER_FIXTURE_DIR/output" \
   GITHUB_STEP_SUMMARY="$RESOLVER_FIXTURE_DIR/summary" \
     bash "$RESOLVER_SCRIPT" > "$RESOLVER_FIXTURE_DIR/log"
+  if [[ "${suki_preset,,}" == *susfs* ]]; then
+    grep -Fxq 'SUSFS_MIN_VERSION=2.3.0' "$RESOLVER_FIXTURE_DIR/env" \
+      || fail "$suki_preset lost the SUSFS v2.3.0 version floor"
+    grep -Fxq "SUSFS_COMMIT=$(su_session_compatible_susfs_commit gki-android14-5.15)" \
+      "$RESOLVER_FIXTURE_DIR/env" \
+      || fail "$suki_preset lost the updated SUSFS pin"
+  fi
   if [[ "$suki_preset" == ReSukiSU* && "${suki_preset,,}" == *susfs* ]]; then
     grep -Fxq 'KSU_COMMIT=fa8311f632a215b5381ec644627c6198d1e8a13e' "$RESOLVER_FIXTURE_DIR/env" \
       || fail "$suki_preset lost its compatible ReSukiSU pin"
@@ -666,6 +673,8 @@ done
         grep -Fxq 'KSU_REPO=https://github.com/Baka-SU/BakaSU.git' "$BAKASU_RESOLVER_FIXTURE/env" \
           || fail "resolver did not use the canonical BakaSU repository"
         if [[ "$KSU_TYPE" == *susfs* ]]; then
+          grep -Fxq 'SUSFS_MIN_VERSION=2.3.0' "$BAKASU_RESOLVER_FIXTURE/env" \
+            || fail "resolver lost the SUSFS v2.3.0 version floor"
           grep -Fxq 'KSU_COMMIT=fa8311f632a215b5381ec644627c6198d1e8a13e' "$BAKASU_RESOLVER_FIXTURE/env" \
             || fail "resolver lost the compatible BakaSU SUSFS pin"
           grep -Fxq "SUSFS_REF=${bakasu_susfs_refs[$target]}" "$BAKASU_RESOLVER_FIXTURE/env" \

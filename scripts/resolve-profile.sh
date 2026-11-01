@@ -159,7 +159,7 @@ SUSFS_COMMIT=""
 SUSFS_PATCH_FILE=""
 SUSFS_MIN_VERSION=""
 if [[ "$KSU_TYPE" == *susfs* ]]; then
-  SUSFS_MIN_VERSION="2.2.0"
+  SUSFS_MIN_VERSION="2.3.0"
   resolve_susfs_settings "$SOC" "$KERNEL_BRANCH"
   case "$KSU_TYPE" in
     SukiSU-Ultra-with-susfs-KPM|SukiSU-Ultra-with-susfs-nomount-KPM|SukiSU-Ultra-with-susfs-zeromount-KPM|BakaSU-with-susfs|BakaSU-with-susfs-nomount|BakaSU-with-susfs-zeromount)

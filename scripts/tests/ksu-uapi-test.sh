@@ -2,6 +2,8 @@
 # Network integration test: compose real pinned drivers, SUSFS, and UAPI patches.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/profile-data.sh
+. "$SCRIPT_DIR/../lib/profile-data.sh"
 # shellcheck source=../lib/susfs-apply.sh
 . "$SCRIPT_DIR/../lib/susfs-apply.sh"
 # shellcheck source=../lib/ksu-uapi.sh
@@ -20,7 +22,7 @@ fetch_source() {
 }
 
 fetch_source "${UAPI_TEST_SUSFS_SOURCE:-https://gitlab.com/simonpunk/susfs4ksu.git}" \
-  aab99ba7693d94489fd32f1cc4c9d58396fffeee "$fixture/susfs" kernel_patches
+  "$(su_session_compatible_susfs_commit gki-android14-5.15)" "$fixture/susfs" kernel_patches
 for variant in BakaSU SukiSU; do
   if [[ "$variant" == BakaSU ]]; then
     source="${UAPI_TEST_BAKASU_SOURCE:-https://github.com/Baka-SU/BakaSU.git}"

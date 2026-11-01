@@ -336,12 +336,15 @@ su_session_compatible_susfs_commit() {
   # patch matches the su-session fd ABI in the pinned SukiSU Ultra and BakaSU
   # drivers. Newer patches require preinit and external SELinux hooks that
   # these driver revisions do not export.
+  # Updated through 2026-09-15: includes the enabled-features NULL-deref fix,
+  # corrected CTIME spoof bit, and super.c declaration compatibility fix.
+  # Later upstream revisions change the KernelSU patch and need a new adapter.
   # The revisions share that KernelSU patch but retain branch-specific patches.
   case "$susfs_ref" in
-    gki-android13-5.10) echo "2c774fdb4f0aaa743598c1bec787f6c935574ed1" ;;
-    gki-android13-5.15) echo "7af04b08f86a5f811cbea28805f96d52368e005f" ;;
-    gki-android14-5.15) echo "aab99ba7693d94489fd32f1cc4c9d58396fffeee" ;;
-    gki-android14-6.1) echo "6c2b5042ec656cd3ce9ad352a1e226e2e9e26779" ;;
+    gki-android13-5.10) echo "7b08b969e3577d282b352a267cb343b02b707d2a" ;;
+    gki-android13-5.15) echo "adaef1c599e770707311ad36b015a0de3f30ac28" ;;
+    gki-android14-5.15) echo "ffa69590787d097f54cb60ed79fa6fd5e285bb41" ;;
+    gki-android14-6.1) echo "2e9f720d3af25e2c6678633cc5be82edae9708b3" ;;
     *)
       echo "::error::No su-session-compatible SUSFS commit is pinned for $susfs_ref" >&2
       return 1

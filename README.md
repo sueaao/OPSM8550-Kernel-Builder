@@ -178,8 +178,8 @@ BakaSU no longer supports it. The pipeline resolves SukiSU Ultra to an exact
 and enables `CONFIG_KPM`, `CONFIG_KALLSYMS`, and `CONFIG_KALLSYMS_ALL`.
 The SUSFS presets pin SukiSU Ultra to
 `7fbbb1f12e2410b69c8ebf958be84f165b8d0c93`, which passed a full
-SUSFS/NoMount/KPM build, and resolve the matching SUSFS
-branch at an exact commit. Newer SukiSU `main` revisions changed the hook ABI
+SUSFS/NoMount/KPM build, and use the matching SUSFS v2.3.0 pins described
+below. Newer SukiSU `main` revisions changed the hook ABI
 and require a new compatibility patch before this pin can be advanced. The four-feature
 preset also resolves NoMount at an exact commit and enables `CONFIG_KEYS` and
 `CONFIG_NOMOUNT`. Validation mode compiles the KPM, SUSFS, VFS, and NoMount
@@ -201,8 +201,11 @@ which passed a full batch build on September 27. Its latest `main` suspends
 SUSFS builds pending upstream SELinux hook updates; this pin must be revisited
 when those updates land. BakaSU without SUSFS continues to follow `main`.
 BakaSU SUSFS presets also pin the matching SUSFS v2.3.0 revision for each GKI
-branch, using the same su-session ABI map as SukiSU Ultra. Following the latest
-SUSFS branch with this older driver can introduce undefined preinit and SELinux
+branch, using the same su-session ABI map as SukiSU Ultra. These pins include
+upstream fixes through September 15, 2026 for the enabled-features NULL
+dereference, CTIME spoof bit, and `super.c` declaration placement. The version
+string remains v2.3.0. Following the latest SUSFS branch with this older driver
+can introduce undefined preinit and SELinux
 hook symbols at the final kernel link.
 
 The pinned drivers originally exposed UAPI 4, which causes `Kernel update
@@ -262,7 +265,7 @@ because the SUSFS KernelSU-side patch does not apply to the current official
 development tree; the pipeline still takes the kernel-side SUSFS files and
 patch from `simonpunk/susfs4ksu` at an exact commit.
 
-SUSFS builds require upstream v2.2.0 or newer and explicitly verify the
+SUSFS builds require upstream v2.3.0 or newer and explicitly verify the
 `SUS_MAP` and `OPEN_REDIRECT` features in the final config. The NoMount presets
 integrate the exact resolved `master` commit, enable `CONFIG_NOMOUNT=y`, and
 checks both source wiring and final kernel signatures. NoMount hooks VFS
