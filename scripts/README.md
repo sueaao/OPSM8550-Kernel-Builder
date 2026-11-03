@@ -9,7 +9,7 @@ Shell implementation used by the GitHub Actions workflows.
 | `check-upstreams.sh` | Resolves all supported profiles against live upstream refs for the scheduled health workflow. |
 | `resolve-profile.sh` | Resolves a valid device/source profile, branch, toolchain, add-ons, and every upstream input to exact commits. |
 | `clone-sources.sh` | Fetches exact kernel and modules commits in parallel and prepares the official OnePlus layout when required. |
-| `download-clang.sh` | Downloads an AOSP Clang directory from an exact pinned Gitiles commit. |
+| `download-clang.sh` | Downloads and validates an AOSP Clang directory from an exact pinned Gitiles commit, retrying incomplete archives before installing from staging. |
 | `compile-kernel.sh` | Applies integrations, generates config, performs validation-only runs or a full ccache-backed build, and reports timing/cache metrics. |
 | `make-anykernel-zip.sh` | Creates a device-checked AnyKernel3 ZIP, provenance manifest, release notes, raw Image asset, and SHA-256 checksums. |
 | `publish-diagnostics.sh` | Appends config, KPM, SUSFS, NoMount, and ZeroMount proof files to the job summary. |
@@ -40,6 +40,9 @@ Shell implementation used by the GitHub Actions workflows.
   Image SHA-256. Source/config validation alone cannot prove KPM is injected.
 - `templates/anykernel.sh` provides the slot-aware OnePlus `boot` installer used
   in release ZIPs instead of AnyKernel3's example-device script.
+- `templates/detect-slot.sh` resolves only valid A/B slots from boot properties,
+  cmdline, and bootconfig. Packaging patches both recovery mounting and core
+  partition selection to use it; unrecognized upstream detection code fails.
 - `lib/susfs-apply.sh` applies SUSFS at an exact commit, repairs explicitly
   recognized upstream drift, enforces the supported version floor, and rejects
   unknown conflicts.
@@ -91,6 +94,10 @@ Extension tests execute the real bridge for all KPM/SuSFS config combinations,
 checking wire layout, routing, unsupported operations, and copy errors.
 `tests/kpm-image-test.sh` checks download integrity, patch failure handling,
 output inspection, and rejection of a missing or stale Image proof.
+`tests/download-clang-test.py` exercises truncated HTTP-success downloads,
+invalid tar archives, missing tools, retry exhaustion, and staged installation.
+`tests/anykernel-slot-test.py` runs both patched upstream slot-detection paths
+against property/cmdline/bootconfig fixtures and rejects invalid or absent slots.
 The scheduled upstream-health workflow resolves
 every profile and runs a matrix covering KernelSU-Next + SUSFS + NoMount, the combined
 SukiSU Ultra + SUSFS + NoMount + KPM preset, and BakaSU + SUSFS + NoMount on

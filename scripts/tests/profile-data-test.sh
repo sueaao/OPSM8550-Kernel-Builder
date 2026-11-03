@@ -1086,10 +1086,10 @@ chmod +x "$KPM_VERIFY_FIXTURE/toolchain/llvm-nm"
 (
   finasu_config="$RESOLVER_FIXTURE_DIR/finasu.config"
   printf '%s\n' CONFIG_KSU=m CONFIG_KPROBES=n CONFIG_EXT4_FS=m \
-    CONFIG_KSU_SUSFS=y CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y > "$finasu_config"
+    CONFIG_KALLSYMS_ALL=n CONFIG_KSU_SUSFS=y CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y > "$finasu_config"
   KSU_TYPE=FinaSU
   apply_variant_configs "$finasu_config"
-  for key in CONFIG_KSU CONFIG_KPROBES CONFIG_EXT4_FS CONFIG_KALLSYMS CONFIG_KSU_DYNAMIC_MANAGER; do
+  for key in CONFIG_KSU CONFIG_KPROBES CONFIG_EXT4_FS CONFIG_KALLSYMS CONFIG_KALLSYMS_ALL CONFIG_KSU_DYNAMIC_MANAGER; do
     require_config_enabled "$finasu_config" "$key"
   done
   for key in CONFIG_KSU_SUSFS CONFIG_KSU_DISABLE_MANAGER CONFIG_KSU_DISABLE_POLICY; do
@@ -1266,6 +1266,8 @@ printf '%s\n' \
   'if [ $? != 0 ]; then exit 1; fi;' \
   'OLD_PATH="$PATH";' \
   > "$ANYKERNEL_PACKAGE_FIXTURE_DIR/source/META-INF/com/google/android/update-binary"
+cat "$SCRIPT_DIR/fixtures/anykernel-slot/update-binary" >> "$ANYKERNEL_PACKAGE_FIXTURE_DIR/source/META-INF/com/google/android/update-binary"
+cp "$SCRIPT_DIR/fixtures/anykernel-slot/ak3-core.sh" "$ANYKERNEL_PACKAGE_FIXTURE_DIR/source/tools/ak3-core.sh"
 printf '%s\n' upstream-arm-busybox > "$ANYKERNEL_PACKAGE_FIXTURE_DIR/source/tools/busybox"
 printf '%s\n' upstream-arm-magiskboot > "$ANYKERNEL_PACKAGE_FIXTURE_DIR/source/tools/magiskboot"
 for optional_tool in fec httools_static lptools_static magiskpolicy snapshotupdater_static; do

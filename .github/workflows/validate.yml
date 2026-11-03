@@ -60,8 +60,11 @@ jobs:
           set -euo pipefail
           bash -n scripts/*.sh scripts/lib/*.sh scripts/templates/*.sh scripts/tests/*.sh
           shellcheck --severity=warning --external-sources -P SCRIPTDIR scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh
+          shellcheck --severity=warning --shell=sh scripts/templates/detect-slot.sh
           bash scripts/tests/profile-data-test.sh
           bash scripts/tests/kpm-image-test.sh
+          python3 scripts/tests/download-clang-test.py
+          python3 scripts/tests/anykernel-slot-test.py
 
       - name: Validate GitHub Actions workflows
         env:

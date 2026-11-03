@@ -214,7 +214,7 @@ if [[ "$KSU_TYPE" != "None" ]]; then
   require_config_enabled out/.config CONFIG_KSU
 fi
 if [[ "$KSU_TYPE" == FinaSU ]]; then
-  for key in CONFIG_KPROBES CONFIG_EXT4_FS CONFIG_KALLSYMS CONFIG_KSU_DYNAMIC_MANAGER; do
+  for key in CONFIG_KPROBES CONFIG_EXT4_FS CONFIG_KALLSYMS CONFIG_KALLSYMS_ALL CONFIG_KSU_DYNAMIC_MANAGER; do
     require_config_enabled out/.config "$key"
   done
   for key in CONFIG_KSU_SUSFS CONFIG_KSU_DISABLE_MANAGER CONFIG_KSU_DISABLE_POLICY; do

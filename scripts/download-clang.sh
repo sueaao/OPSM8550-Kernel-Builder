@@ -25,12 +25,35 @@ if [[ -z "$URL" ]]; then
 fi
 
 TARGET_DIR="toolchains/${CLANG_VERSION}"
-mkdir -p "$TARGET_DIR"
+mkdir -p toolchains
 
-TMP_TAR="$(mktemp --suffix=.tar.gz)"
-trap 'rm -f "$TMP_TAR"' EXIT
+STAGING_DIR="$(mktemp -d "toolchains/.${CLANG_VERSION}.XXXXXX")"
+trap 'rm -rf "$STAGING_DIR"' EXIT
+TMP_TAR="$STAGING_DIR/clang.tar.gz"
 
-curl --retry 5 --retry-delay 3 --retry-all-errors -fL "$URL" -o "$TMP_TAR"
-tar -xf "$TMP_TAR" -C "$TARGET_DIR"
-test -x "$TARGET_DIR/bin/clang"
-"$TARGET_DIR/bin/clang" --version | head -n 1
+# Gitiles can return HTTP 200 with a truncated archive. Curl's transport
+# retries cannot detect that, so retry the complete download/validation cycle.
+for attempt in 1 2 3 4 5; do
+  rm -f "$TMP_TAR"
+  rm -rf "$STAGING_DIR/extracted"
+  mkdir "$STAGING_DIR/extracted"
+  echo "[clang] Download attempt $attempt/5: $CLANG_VERSION"
+  if curl --retry 2 --retry-delay 3 --retry-all-errors \
+       --connect-timeout 30 --max-time 1800 -fL "$URL" -o "$TMP_TAR" &&
+     gzip -t "$TMP_TAR" &&
+     tar -xzf "$TMP_TAR" -C "$STAGING_DIR/extracted" &&
+     test -x "$STAGING_DIR/extracted/bin/clang" &&
+     test -x "$STAGING_DIR/extracted/bin/llvm-nm" &&
+     "$STAGING_DIR/extracted/bin/clang" --version > "$STAGING_DIR/version.txt"; then
+    rm -rf "$TARGET_DIR"
+    mv "$STAGING_DIR/extracted" "$TARGET_DIR"
+    head -n 1 "$STAGING_DIR/version.txt"
+    exit 0
+  fi
+  echo "::warning::AOSP Clang download or archive validation failed (attempt $attempt/5)."
+  if [[ "$attempt" != 5 ]]; then
+    sleep 3
+  fi
+done
+echo "::error::Could not obtain a complete, usable AOSP Clang archive after 5 attempts."
+exit 1

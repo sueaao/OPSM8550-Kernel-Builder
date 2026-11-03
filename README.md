@@ -145,7 +145,8 @@ Available workflow presets:
 FinaSU is fetched from [`LyraVoid/FinaSU`](https://github.com/LyraVoid/FinaSU)
 at an exact commit resolved from `master`. Select `FinaSU (experimental)` in
 the root dropdown and use the matching FinaSU manager. This preset enables
-the driver's KPROBES/EXT4 dependencies and manager support. It pins the official
+the driver's KPROBES/EXT4 dependencies, `CONFIG_KALLSYMS_ALL` for runtime data
+symbol lookup, and manager support. It pins the official
 v1.2.1 manager's signing certificate (`2d89b50a…5d448458`, 716 bytes) in the
 release signature slot, as required by FinaSU's upstream release workflow.
 Both post-build verification and packaging check that the final Image contains
@@ -326,7 +327,10 @@ Android version checking is also enabled when the selected branch identifies a
 known Android generation. The installer targets the current active `boot`
 partition by name, refuses to continue unless the resolved `boot_a`/`boot_b`
 path matches that slot, splits and rebuilds the boot image without unpacking
-its ramdisk, and replaces only the kernel Image. This supports newer devices such as OnePlus 11,
+its ramdisk, and replaces only the kernel Image. Slot detection uses the boot
+properties, `/proc/cmdline`, and `/proc/bootconfig`, supporting recoveries that
+do not publish `ro.boot.slot_suffix`. Missing or invalid slot metadata still
+aborts installation without writing a partition. This supports newer devices such as OnePlus 11,
 where the first-stage ramdisk lives in `init_boot` and `boot` legitimately has
 no ramdisk, while preserving a boot ramdisk when one is present. Upstream
 AnyKernel example-device paths and demo ramdisk edits are not included. KPM
@@ -376,6 +380,10 @@ holding the build runner indefinitely.
 All third-party GitHub Actions are pinned to full commit hashes. AOSP Clang
 archive URLs are pinned to exact Gitiles commits, and changing the downloader
 invalidates the toolchain cache.
+The downloader validates gzip integrity, archive extraction, and required tools
+before installing the toolchain. Truncated HTTP-success responses trigger a
+fresh download, with at most five attempts; partial extractions cannot become
+the cached toolchain.
 
 ## Validation and upstream health
 

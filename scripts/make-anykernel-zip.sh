@@ -125,6 +125,10 @@ configure_anykernel_properties \
 set_anykernel_flasher_developer "$ANYKERNEL_UPDATE_BINARY"
 add_anykernel_devicecheck_diagnostics "$ANYKERNEL_UPDATE_BINARY"
 patch_anykernel_app_flash_staging "$ANYKERNEL_UPDATE_BINARY"
+patch_anykernel_slot_detection \
+  "$ANYKERNEL_UPDATE_BINARY" \
+  "AnyKernel3/tools/ak3-core.sh" \
+  "${SCRIPT_DIR}/templates/detect-slot.sh"
 
 if [[ "$KPM_ENABLED" == true ]]; then
   KSU_CHECKOUT_NAME="$(basename "${KSU_REPO%.git}")"

@@ -39,6 +39,52 @@ replace_file_preserving_mode() {
   mv "$replacement" "$destination"
 }
 
+patch_anykernel_slot_detection() {
+  local update_binary="$1"
+  local core="$2"
+  local detector_template="$3"
+  local file variable indent start end tmp_file
+
+  for file in "$update_binary" "$core"; do
+    if [[ "$file" == "$update_binary" ]]; then
+      variable=slot
+      indent='  '
+      start='  local slot=$(getprop ro.boot.slot_suffix 2>/dev/null);'
+    else
+      variable=SLOT
+      indent='      '
+      start='      SLOT=$(getprop ro.boot.slot_suffix 2>/dev/null);'
+    fi
+    end="${indent}[ \"\$$variable\" == \"normal\" ] && unset $variable;"
+    if grep -Fq "${indent}${variable}=\$(sh \"\$AKHOME/tools/detect-slot.sh\");" "$file"; then
+      continue
+    fi
+    tmp_file="$(mktemp)"
+    awk -v start="$start" -v end="$end" -v variable="$variable" -v indent="$indent" '
+      $0 == start {
+        replacing = 1
+        found++
+        if (variable == "slot") print indent "local slot;"
+        print indent variable "=$(sh \"$AKHOME/tools/detect-slot.sh\");"
+      }
+      replacing {
+        skipped++
+        if ($0 == end) replacing = 0
+        next
+      }
+      { print }
+      END { if (found != 1 || skipped != 8 || replacing) exit 1 }
+    ' "$file" > "$tmp_file" || {
+      rm -f "$tmp_file"
+      echo "::error::Unrecognized AnyKernel slot detection in $file"
+      return 1
+    }
+    replace_file_preserving_mode "$tmp_file" "$file"
+  done
+  cp "$detector_template" "$(dirname "$core")/detect-slot.sh"
+  chmod 755 "$(dirname "$core")/detect-slot.sh"
+}
+
 install_anykernel_template() {
   local template="$1"
   local destination="$2"
