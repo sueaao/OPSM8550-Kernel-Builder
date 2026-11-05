@@ -119,6 +119,23 @@ The OnePlus 11 / 12R crDroid profile passes the common OPlus DTB flag and both
 the Salami and Aston device flags on every make invocation, matching the
 upstream device configurations for the shared kernel image.
 
+To build both Android versions in one run, select
+**`Build Android 16 + 17 (crDroid batch)`** in the **branch mode** dropdown.
+Use one of the three crDroid profiles (Nord CE4, OnePlus 11 / 12R, or OnePlus
+12). The workflow starts separate `16.0` and `17.0` jobs, each resolving its
+matching kernel/modules commits. The manual branch dropdown is ignored in
+this mode. Keep the compiler on **Recommended** to select `clang-r563880c`
+for A16 and `clang-r584948` for A17; an explicitly selected compiler remains
+an override for both jobs.
+
+This works with every individual root preset, including FinaSU + SUSFS +
+NoMount. Combining it with either three-root batch creates six jobs. Package
+and diagnostics artifacts end in `-A16` or `-A17`, ZIP/Image filenames contain
+`_A16` or `_A17`, and each ZIP accepts only its own Android version. Release
+mode publishes every variant under one tag with separate build manifests and
+checksums, even if the two branches point at the same source commit. Other
+source families are rejected early because their Android branch names differ.
+
 ## Root integrations
 
 Available workflow presets:
@@ -211,6 +228,8 @@ ZeroMount + KPM`, `BakaSU + SUSFS + ZeroMount`, and
 `KernelSU-Next + SUSFS + ZeroMount`.
 Each entry keeps its own package and diagnostics artifact; release mode publishes
 all three builds under the same immutable release tag.
+With Android 16 + 17 batch mode, the same root matrix runs once per Android
+version and publishes all six builds under that tag.
 
 KPM is available only through the dedicated SukiSU Ultra presets because current
 BakaSU no longer supports it. The pipeline resolves SukiSU Ultra to an exact

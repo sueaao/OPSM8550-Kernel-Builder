@@ -26,6 +26,22 @@ INPUT_ROM_GKI_MODULE_COMPAT="${INPUT_ROM_GKI_MODULE_COMPAT:-Strict GKI module ch
 
 resolve_build_profile "$INPUT_BUILD_PROFILE"
 resolve_root_solution "$INPUT_ROOT_SOLUTION"
+ANDROID_BATCH_BUILD="${INPUT_ANDROID_BATCH_BUILD:-0}"
+if [[ "$INPUT_BRANCH_MODE" == 'Build Android 16 + 17 (crDroid batch)' ]]; then
+  echo '::error::Android batch mode must be expanded into 16.0/17.0 jobs by the workflow matrix.'
+  exit 1
+fi
+case "$ANDROID_BATCH_BUILD" in
+  0) ;;
+  1)
+    if [[ "$KERNEL_SOURCE" != crdroidandroid || ( "$INPUT_KERNEL_BRANCH" != 16.0 && "$INPUT_KERNEL_BRANCH" != 17.0 ) ||
+          ( "$INPUT_BRANCH_MODE" != 'I want to select the branch myself' && "$INPUT_BRANCH_MODE" != manual ) ]]; then
+      echo '::error::Android 16 + 17 batch builds require a crDroid profile with explicit 16.0/17.0 branches.'
+      exit 1
+    fi
+    ;;
+  *) echo "::error::Invalid Android batch flag: $ANDROID_BATCH_BUILD"; exit 1 ;;
+esac
 
 case "$INPUT_ROM_GKI_MODULE_COMPAT" in
   "Strict GKI module checks (default)") ROM_GKI_MODULE_COMPAT=0 ;;
@@ -256,6 +272,7 @@ esac
   echo "DEVICE_CODENAMES=$DEVICE_CODENAMES"
   echo "DEVICE_NAMES=$DEVICE_NAMES"
   echo "SUPPORTED_ANDROID_VERSIONS=$SUPPORTED_ANDROID_VERSIONS"
+  echo "ANDROID_BATCH_BUILD=$ANDROID_BATCH_BUILD"
   echo "BUILD_MODE=$INPUT_BUILD_MODE"
   echo "SOC=$SOC"
   echo "UPSTREAM_SOC=$UPSTREAM_SOC"
@@ -304,6 +321,7 @@ esac
   echo "device_codenames=$DEVICE_CODENAMES"
   echo "device_names=$DEVICE_NAMES"
   echo "supported_android_versions=$SUPPORTED_ANDROID_VERSIONS"
+  echo "android_batch_build=$ANDROID_BATCH_BUILD"
   echo "build_mode=$INPUT_BUILD_MODE"
   echo "soc=$SOC"
   echo "upstream_soc=$UPSTREAM_SOC"
@@ -348,6 +366,7 @@ esac
   echo "- Root solution: $KSU_TYPE"
   echo "- ROM GKI module compatibility: $ROM_GKI_MODULE_COMPAT"
   echo "- Mode: $INPUT_BUILD_MODE"
+  echo "- Android 16/17 batch: $ANDROID_BATCH_BUILD"
   if [[ -n "$SUPPORTED_ANDROID_VERSIONS" ]]; then
     echo "- Android package check: $SUPPORTED_ANDROID_VERSIONS"
   else

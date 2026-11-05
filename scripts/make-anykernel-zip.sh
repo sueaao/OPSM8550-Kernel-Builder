@@ -15,6 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/lib/finasu-manager.sh"
 # shellcheck source=lib/finasu-integration.sh
 . "${SCRIPT_DIR}/lib/finasu-integration.sh"
+# shellcheck source=lib/build-metadata.sh
+. "${SCRIPT_DIR}/lib/build-metadata.sh"
 
 : "${SOC:?}"
 : "${PROFILE_ID:?}"
@@ -35,6 +37,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${ANYKERNEL_COMMIT:?}"
 
 SUPPORTED_ANDROID_VERSIONS="${SUPPORTED_ANDROID_VERSIONS:-}"
+ANDROID_BATCH_BUILD="${ANDROID_BATCH_BUILD:-0}"
+ANDROID_VARIANT="$(android_build_variant "$ANDROID_BATCH_BUILD" "$SUPPORTED_ANDROID_VERSIONS")"
 KERNEL_MAKE_FLAGS="${KERNEL_MAKE_FLAGS:-}"
 ROM_GKI_MODULE_COMPAT="${ROM_GKI_MODULE_COMPAT:-0}"
 case "$ROM_GKI_MODULE_COMPAT" in
@@ -69,7 +73,7 @@ MAGISK_BUSYBOX_ARM64_SHA256="${MAGISK_BUSYBOX_ARM64_SHA256:-4d60ab3f5a59ebb2ca86
 MAGISK_APK_PATH="${MAGISK_APK_PATH:-}"
 
 SHORT_KERNEL_COMMIT="${KERNEL_COMMIT:0:12}"
-ZIP_NAME="${PROFILE_ID}_${KSU_TYPE}_${SHORT_KERNEL_COMMIT}_${BUILD_TIMESTAMP}"
+ZIP_NAME="${PROFILE_ID}_${KSU_TYPE}_${SHORT_KERNEL_COMMIT}_${BUILD_TIMESTAMP}${ANDROID_VARIANT:+_${ANDROID_VARIANT}}"
 if [[ "$ROM_GKI_MODULE_COMPAT" == 1 ]]; then
   ZIP_NAME="${ZIP_NAME}_rom-gki-compat"
 fi
@@ -183,6 +187,7 @@ jq -n \
   --arg device_codenames "$DEVICE_CODENAMES" \
   --arg accepted_device_ids "$DEVICE_NAMES" \
   --arg android_versions "$SUPPORTED_ANDROID_VERSIONS" \
+  --argjson android_batch_build "$([[ "$ANDROID_BATCH_BUILD" == 1 ]] && echo true || echo false)" \
   --arg soc "$SOC" \
   --arg source "$SOURCE_NAME" \
   --arg branch "$KERNEL_BRANCH" \
@@ -233,6 +238,7 @@ jq -n \
     device_codenames: ($device_codenames | split(" ")),
     accepted_device_ids: ($accepted_device_ids | split(" ")),
     supported_android_versions: $android_versions,
+    android_batch_build: $android_batch_build,
     soc: $soc,
     source: $source,
     branch: $branch,
@@ -312,6 +318,7 @@ cat > "$ASSET_DIR/release-notes.md" <<EOF_NOTES
 - Accepted device IDs: ${DEVICE_NAMES}
 - Source: ${SOURCE_NAME}
 - Branch: ${KERNEL_BRANCH}
+- Android target: ${SUPPORTED_ANDROID_VERSIONS:-unknown}
 - Kernel commit: \`${KERNEL_COMMIT}\`
 - Modules branch: ${MODULES_BRANCH}
 - Modules commit: \`${MODULES_COMMIT}\`

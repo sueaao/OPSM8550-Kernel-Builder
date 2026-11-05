@@ -8,11 +8,13 @@ Shell implementation used by the GitHub Actions workflows.
 | --- | --- |
 | `check-upstreams.sh` | Resolves all supported profiles against live upstream refs for the scheduled health workflow. |
 | `resolve-profile.sh` | Resolves a valid device/source profile, branch, toolchain, add-ons, and every upstream input to exact commits. |
+| `set-build-metadata.sh` | Assigns package/diagnostics artifact names and branch-specific cache keys; Android batches add A16/A17 labels. |
 | `clone-sources.sh` | Fetches exact kernel and modules commits in parallel and prepares the official OnePlus layout when required. |
 | `download-clang.sh` | Downloads and validates an AOSP Clang directory from an exact pinned Gitiles commit, retrying incomplete archives before installing from staging. |
 | `compile-kernel.sh` | Applies integrations, generates config, performs validation-only runs or a full ccache-backed build, and reports timing/cache metrics. |
 | `make-anykernel-zip.sh` | Creates a device-checked AnyKernel3 ZIP, provenance manifest, release notes, raw Image asset, and SHA-256 checksums. |
 | `publish-diagnostics.sh` | Appends config, KPM, SUSFS, NoMount, and ZeroMount proof files to the job summary. |
+| `stage-release-assets.sh` | Verifies and merges matrix artifacts into a release, preserving per-variant manifests/checksums and rejecting filename collisions. |
 
 ## Shared libraries
 
@@ -21,6 +23,8 @@ Shell implementation used by the GitHub Actions workflows.
   overrides. It performs no network access and is covered by offline tests.
 - `lib/git-helpers.sh` provides bounded five-attempt retries for upstream ref
   lookup and fetches, with interactive credential prompts disabled in CI.
+- `lib/build-metadata.sh` validates Android batch flags and version labels so
+  two branches sharing one commit still produce distinct artifacts and files.
 - `lib/anykernel-helpers.sh` applies and verifies device/version protection in
   AnyKernel3 properties.
 - `lib/kernel-helpers.sh` edits and verifies Kconfig values and source insertions,
@@ -104,6 +108,14 @@ could silently break FinaSU's userspace rule protocol.
 crDroid 13 coverage checks Android 17 branch inference, the pinned
 `clang-r584948` toolchain, automatic/manual resolver output for all three
 crDroid profiles, retained Android 16 selection, and Android 17 ZIP properties.
+Android batch coverage resolves A16/A17 separately for all three crDroid
+profiles, checks the corresponding recommended Clang and module branches,
+and rejects unsupported profiles or an unexpanded batch selection. Real
+packaging fixtures check both version gates and A16/A17 filename suffixes.
+`tests/android-batch-test.py` runs metadata generation and release staging for
+six root/version variants with identical source commits and timestamps. It
+checks independent artifacts/caches, retained manifests and checksums, and
+rejection of corrupted files or colliding asset names.
 
 The push/PR validation workflow runs Bash syntax checks, ShellCheck, these
 offline tests, and actionlint. A separate `tests/ksu-uapi-test.sh` integration

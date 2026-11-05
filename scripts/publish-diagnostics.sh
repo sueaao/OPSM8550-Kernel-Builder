@@ -44,6 +44,8 @@ append_file_block() {
   echo "- Device codenames: ${DEVICE_CODENAMES:-unknown}"
   echo "- Accepted device IDs: ${DEVICE_NAMES:-unknown}"
   echo "- Branch: ${KERNEL_BRANCH}"
+  echo "- Android target: ${SUPPORTED_ANDROID_VERSIONS:-unknown}"
+  echo "- Android 16/17 batch: ${ANDROID_BATCH_BUILD:-0}"
   echo "- Kernel commit: \`${KERNEL_COMMIT}\`"
   echo "- Modules branch: ${MODULES_BRANCH}"
   echo "- Modules commit: \`${MODULES_COMMIT}\`"

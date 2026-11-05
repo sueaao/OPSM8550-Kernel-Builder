@@ -1,6 +1,6 @@
 name: Build OnePlus Kernel
 run-name: >-
-  ${{ inputs.build_profile }} | ${{ inputs.root_solution }} | ${{ inputs.build_mode }}
+  ${{ inputs.build_profile }} | ${{ inputs.root_solution }} | ${{ inputs.build_mode }}${{ inputs.branch_mode == 'Build Android 16 + 17 (crDroid batch)' && ' | A16 + A17' || '' }}
 
 on:
   workflow_dispatch:
@@ -24,13 +24,14 @@ on:
           - SM8650 | OnePlus 12 | LineageOS (recommended)
           - SM8650 | OnePlus 12 | crDroid
       branch_mode:
-        description: Use the upstream default branch or select one manually
+        description: Use the default branch, select one manually, or build both Android 16 and 17 (crDroid only)
         required: true
         type: choice
         default: Use the recommended branch automatically
         options:
           - Use the recommended branch automatically
           - I want to select the branch myself
+          - Build Android 16 + 17 (crDroid batch)
       kernel_branch:
         description: Manual only; branch must exist in the selected source (LineageOS uses lineage-*, crDroid uses 17.0/16.0). Prefer automatic mode.
         required: true
@@ -161,7 +162,7 @@ jobs:
           echo "[release] Reserved ${RELEASE_TAG} at ${GITHUB_SHA}."
 
   build:
-    name: Build ${{ matrix.root_solution }}
+    name: Build ${{ matrix.root_solution }}${{ matrix.kernel_branch != 'selected' && format(' | {0}', matrix.kernel_branch) || '' }}
     needs: reserve_release_tag
     if: ${{ always() && (needs.reserve_release_tag.result == 'success' || needs.reserve_release_tag.result == 'skipped') }}
     runs-on: ubuntu-24.04
@@ -169,9 +170,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        kernel_branch: ${{ fromJSON(inputs.branch_mode == 'Build Android 16 + 17 (crDroid batch)' && '["16.0","17.0"]' || '["selected"]') }}
         root_solution: ${{ fromJSON(inputs.root_solution == 'Build all 3 featured SUSFS variants (batch)' && '["SukiSU Ultra + SUSFS + NoMount + KPM (experimental)","BakaSU + SUSFS + NoMount (experimental)","KernelSU-Next + SUSFS + NoMount (experimental)"]' || inputs.root_solution == 'Build all 3 ZeroMount variants (batch)' && '["SukiSU Ultra + SUSFS + ZeroMount + KPM (experimental)","BakaSU + SUSFS + ZeroMount (experimental)","KernelSU-Next + SUSFS + ZeroMount (experimental)"]' || format('["{0}"]', inputs.root_solution)) }}
     concurrency:
-      group: kernel-ci-${{ github.ref_name }}-${{ inputs.build_profile }}-${{ matrix.root_solution }}-${{ inputs.branch_mode }}-${{ inputs.kernel_branch }}-${{ inputs.clang_choice }}-${{ inputs.rom_gki_module_compat }}-${{ inputs.build_mode }}
+      group: kernel-ci-${{ github.ref_name }}-${{ inputs.build_profile }}-${{ matrix.root_solution }}-${{ matrix.kernel_branch }}-${{ inputs.branch_mode }}-${{ inputs.kernel_branch }}-${{ inputs.clang_choice }}-${{ inputs.rom_gki_module_compat }}-${{ inputs.build_mode }}
       cancel-in-progress: true
 
     env:
@@ -187,8 +189,9 @@ jobs:
         id: resolve
         env:
           INPUT_BUILD_PROFILE: ${{ inputs.build_profile }}
-          INPUT_BRANCH_MODE: ${{ inputs.branch_mode }}
-          INPUT_KERNEL_BRANCH: ${{ inputs.kernel_branch }}
+          INPUT_BRANCH_MODE: ${{ matrix.kernel_branch == 'selected' && inputs.branch_mode || 'I want to select the branch myself' }}
+          INPUT_KERNEL_BRANCH: ${{ matrix.kernel_branch == 'selected' && inputs.kernel_branch || matrix.kernel_branch }}
+          INPUT_ANDROID_BATCH_BUILD: ${{ matrix.kernel_branch != 'selected' && '1' || '0' }}
           INPUT_CLANG_CHOICE: ${{ inputs.clang_choice }}
           INPUT_ROOT_SOLUTION: ${{ matrix.root_solution }}
           INPUT_BUILD_MODE: ${{ inputs.build_mode }}
@@ -197,25 +200,7 @@ jobs:
 
       - name: Set build metadata
         id: metadata
-        run: |
-          set -euo pipefail
-          SAFE_KERNEL_BRANCH="${KERNEL_BRANCH//\//-}"
-          BUILD_TIMESTAMP="$(date -u +'%Y%m%d_%H%M%S')"
-          ARTIFACT_NAME="kernel-package-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${KSU_TYPE}"
-          DIAGNOSTICS_NAME="kernel-diagnostics-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${KSU_TYPE}"
-          CCACHE_KEY_PREFIX="${RUNNER_OS}-ccache-v2-${SOC}-${SOURCE_SLUG}-${PROFILE_ID}-${SAFE_KERNEL_BRANCH}-${CLANG_VERSION}-${KSU_TYPE}-${ROM_GKI_MODULE_COMPAT}"
-          CCACHE_EPOCH="$(date -u +'%G-W%V')"
-          {
-            echo "BUILD_TIMESTAMP=${BUILD_TIMESTAMP}"
-            echo "SAFE_KERNEL_BRANCH=${SAFE_KERNEL_BRANCH}"
-            echo "ARTIFACT_NAME=${ARTIFACT_NAME}"
-            echo "DIAGNOSTICS_NAME=${DIAGNOSTICS_NAME}"
-            echo "CCACHE_KEY_PREFIX=${CCACHE_KEY_PREFIX}"
-            echo "CCACHE_KEY=${CCACHE_KEY_PREFIX}-${CCACHE_EPOCH}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          } >> "$GITHUB_ENV"
-          {
-            echo "artifact_name=${ARTIFACT_NAME}"
-          } >> "$GITHUB_OUTPUT"
+        run: bash scripts/set-build-metadata.sh
 
       - name: Restore AOSP Clang cache
         id: clang-cache
@@ -392,9 +377,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ needs.reserve_release_tag.outputs.release_tag }}
-      RELEASE_NAME: ${{ inputs.build_profile }} | ${{ inputs.root_solution }} | r${{ github.run_number }}.${{ github.run_attempt }}
+      RELEASE_NAME: ${{ inputs.build_profile }} | ${{ inputs.root_solution }}${{ inputs.branch_mode == 'Build Android 16 + 17 (crDroid batch)' && ' | A16 + A17' || '' }} | r${{ github.run_number }}.${{ github.run_attempt }}
 
     steps:
+      - name: Checkout release staging script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Download verified build outputs
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -402,40 +392,7 @@ jobs:
           path: release-packages
 
       - name: Verify and stage release assets
-        run: |
-          set -euo pipefail
-          PACKAGE_ROOT="${GITHUB_WORKSPACE}/release-packages"
-          ASSET_DIR="${GITHUB_WORKSPACE}/release-assets"
-          NOTES_FILE="${ASSET_DIR}/release-notes.md"
-          mkdir -p "$ASSET_DIR"
-          : > "$NOTES_FILE"
-
-          package_count=0
-          for package_dir in "$PACKAGE_ROOT"/kernel-package-*; do
-            [[ -d "$package_dir" ]] || continue
-            package_count=$((package_count + 1))
-            artifact_name="$(basename "$package_dir")"
-            root_type="${artifact_name#"kernel-package-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-"}"
-            (
-              cd "$package_dir"
-              sha256sum --check SHA256SUMS
-            )
-            cp "$package_dir"/*.zip "$package_dir"/Image-* "$ASSET_DIR"/
-            cp "$package_dir/build-info.json" "$ASSET_DIR/build-info-${root_type}.json"
-            sed "s/  build-info.json$/  build-info-${root_type}.json/" \
-              "$package_dir/SHA256SUMS" > "$ASSET_DIR/SHA256SUMS-${root_type}"
-            {
-              echo "## ${root_type}"
-              echo
-              tail -n +3 "$package_dir/release-notes.md"
-              echo
-            } >> "$NOTES_FILE"
-          done
-
-          if (( package_count == 0 )); then
-            echo "::error::No build packages were downloaded for this workflow run."
-            exit 1
-          fi
+        run: bash scripts/stage-release-assets.sh
 
       - name: Create or update release
         run: |
