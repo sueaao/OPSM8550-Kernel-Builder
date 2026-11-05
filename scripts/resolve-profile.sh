@@ -9,6 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/lib/profile-data.sh"
 # shellcheck source=lib/git-helpers.sh
 . "${SCRIPT_DIR}/lib/git-helpers.sh"
+# shellcheck source=lib/finasu-release.sh
+. "${SCRIPT_DIR}/lib/finasu-release.sh"
 
 : "${INPUT_BUILD_PROFILE:?}"
 : "${INPUT_BRANCH_MODE:?}"
@@ -120,7 +122,8 @@ case "$KSU_TYPE" in
     ;;
   FinaSU)
     KSU_REPO="https://github.com/LyraVoid/FinaSU.git"
-    KSU_REF="master"
+    KSU_REF="$FINASU_RELEASE"
+    KSU_COMMIT="$FINASU_COMMIT"
     ;;
   SukiSU-Ultra-with-KPM|SukiSU-Ultra-with-susfs-KPM|SukiSU-Ultra-with-susfs-nomount-KPM|SukiSU-Ultra-with-susfs-zeromount-KPM)
     KSU_REPO="https://github.com/SukiSU-Ultra/SukiSU-Ultra.git"
@@ -342,6 +345,10 @@ esac
   fi
   if [[ -n "$KSU_COMMIT" ]]; then
     echo "- KernelSU commit: \`${KSU_COMMIT}\` ($KSU_REF)"
+  fi
+  if [[ "$KSU_TYPE" == FinaSU ]]; then
+    echo "- FinaSU manager: [$FINASU_MANAGER_APK]($FINASU_MANAGER_URL)"
+    echo "- Manager APK SHA-256: \`$FINASU_MANAGER_APK_SHA256\`"
   fi
   if [[ -n "$SUSFS_REF" ]]; then
     echo "- SUSFS: $SUSFS_REF (\`${SUSFS_COMMIT}\`, required >= v${SUSFS_MIN_VERSION})"

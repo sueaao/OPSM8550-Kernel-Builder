@@ -142,23 +142,38 @@ Available workflow presets:
 | `BakaSU + SUSFS + ZeroMount (experimental)` | BakaSU with SUSFS and ZeroMount | Experimental |
 | `BakaSU + SUSFS + NoMount (experimental)` | BakaSU with SUSFS and NoMount | Experimental |
 
-FinaSU is fetched from [`LyraVoid/FinaSU`](https://github.com/LyraVoid/FinaSU)
-at an exact commit resolved from `master`. Select `FinaSU (experimental)` in
-the root dropdown and use the matching FinaSU manager. This preset enables
-the driver's KPROBES/EXT4 dependencies, `CONFIG_KALLSYMS_ALL` for runtime data
-symbol lookup, and manager support. It pins the official
-v1.2.1 manager's signing certificate (`2d89b50a…5d448458`, 716 bytes) in the
-release signature slot, as required by FinaSU's upstream release workflow.
-Both post-build verification and packaging check that the final Image contains
-this certificate hash; `build-info.json` records it. A build using only the
-upstream default certificate can boot but reject FinaSU Manager as not installed.
-SUSFS, KPM, and
-the builder's NoMount/ZeroMount integrations are not enabled for this preset;
-FinaSU's own manager/userspace features remain managed by FinaSU. The optional
-preinit runner follows upstream's header availability check. Upstream-health
-includes driver object smoke builds on representative 5.10, 5.15, and 6.1
-profiles. Full kernel compilation and device boot still need validation before
-this preset can be considered stable.
+FinaSU is pinned to [`LyraVoid/FinaSU v1.4.5`](https://github.com/LyraVoid/FinaSU/releases/tag/v1.4.5),
+commit `a839ce2d742f0f1450a3aad20bdc14bc060da840`. Select `FinaSU (experimental)`
+in the root dropdown and install the matching official
+[`FinaSU_v1.4.5_33168-release.apk`](https://github.com/LyraVoid/FinaSU/releases/download/v1.4.5/FinaSU_v1.4.5_33168-release.apk).
+Its SHA-256 is `edbe2e8fb860135ad0142d672ded2ee4327d70a06746d8d629645184f7eeaeb6`.
+The APK contains ksud: flashing a newer kernel does not update the installed
+manager or daemon. v1.4.5 fixes feature initialization when `/data/adb/modules`
+is absent and includes v1.4.4's module feature ownership and Manager improvements.
+The source/APK pair is maintained in `scripts/lib/finasu-release.sh`.
+
+This preset enables the driver's KPROBES/EXT4 dependencies,
+`CONFIG_KALLSYMS_ALL`, dynamic manager support, installed UAPI headers, and the
+Tracepoint backend. It disables debug logging and requires preinit with
+`KSU_REQUIRE_PREINIT=1`; smoke builds check the ARM64 runner and blob, and full
+builds and packaging also check its bytes in the final Image. A guarded patch
+moves netisolate's 2064-byte empty cleanup policy from the kernel stack to
+read-only storage, preserving the cleanup order.
+
+The verified v1.4.5 manager certificate (`2d89b50a…5d448458`, 716 bytes,
+unchanged since v1.2.1) is supplied in the release signature slot. Both
+post-build verification and packaging check that the final Image contains this
+certificate hash; `build-info.json` records the manager release, APK URL/digest,
+certificate hash, and compatibility patch digest. Release notes link the paired
+APK. A build using only the upstream default certificate can boot but reject
+FinaSU Manager as not installed.
+
+SUSFS, KPM, and the builder's NoMount/ZeroMount integrations are not enabled for
+this preset; FinaSU's own manager/userspace features remain managed by FinaSU.
+Upstream-health includes driver object smoke builds on representative 5.10,
+5.15 (including SM7550 and SM8550 crDroid), and 6.1 profiles. Full kernel
+compilation and device boot still need validation before this preset can be
+considered stable.
 
 BakaSU (formerly ReSukiSU) is fetched from
 [`Baka-SU/BakaSU`](https://github.com/Baka-SU/BakaSU) at an exact commit (resolved from `main` without SUSFS, or pinned for SUSFS).

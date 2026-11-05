@@ -1,0 +1,14 @@
+diff --git a/kernel/feature/netisolate.c b/kernel/feature/netisolate.c
+--- a/kernel/feature/netisolate.c
++++ b/kernel/feature/netisolate.c
+@@ -752,7 +752,9 @@ int __init ksu_netisolate_init(void)
+ void ksu_netisolate_exit(void)
+ {
++    static const struct ksu_netisolate_policies disabled;
++
+     mutex_lock(&ni_lifecycle_lock);
+     WRITE_ONCE(ni_stopping, true);
+-    ni_publish_locked(&(struct ksu_netisolate_policies){});
++    ni_publish_locked(&disabled);
+     {
+         int ret = ni_uninstall_hooks_locked();

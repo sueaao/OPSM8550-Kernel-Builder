@@ -81,6 +81,8 @@ append_file_block() {
     echo
   fi
 
+  append_file_block "finasu-manager-proof.txt" "${SOC}/finasu-manager-proof.txt"
+  append_file_block "finasu-preinit-proof.txt" "${SOC}/finasu-preinit-proof.txt"
   append_file_block "susfs-source-proof.txt" "${SOC}/susfs-source-proof.txt"
   append_file_block "susfs-hook-proof.txt"   "${SOC}/susfs-hook-proof.txt"
   append_file_block "susfs-proof.txt"        "${SOC}/susfs-proof.txt"

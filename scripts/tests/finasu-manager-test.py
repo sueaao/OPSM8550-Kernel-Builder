@@ -57,6 +57,7 @@ CONFIG_KSU_DYNAMIC_MANAGER := y
 include {fixture / 'Kbuild'}
 print:
 \t@printf '%s\\n' 'FLAGS=$(ccflags-y)'
+\t@printf '%s\\n' 'OBJS=$(kernelsu-objs)'
 """)
     for corrected in (False, True):
         output = subprocess.check_output([
@@ -106,6 +107,17 @@ int main(void) {{
                         str(harness), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
 
+    required = ["make", "-s", "--no-print-directory", "-f", str(makefile), "print",
+                *args, "KSU_REQUIRE_PREINIT=1"]
+    missing = subprocess.run(required, cwd=fixture, text=True, capture_output=True)
+    assert missing.returncode != 0 and "preinit runner is required" in missing.stderr
+    headers = fixture / "usr/include/linux/unistd.h"
+    headers.parent.mkdir(parents=True)
+    headers.write_text("/* Kbuild header-presence fixture */\n")
+    output = subprocess.check_output(required, cwd=fixture, text=True)
+    assert "KSU_NO_PREINIT" not in output
+    assert "preinit/preinit.o" in output and "preinit/blob.o" in output
+
     # The artifact gate must reject a kernel containing only the old key.
     image, proof = fixture / "Image", fixture / "proof.txt"
     for corrected in (False, True):
@@ -117,4 +129,4 @@ int main(void) {{
         assert (result.returncode == 0) == corrected
     assert cert_hash in proof.read_text()
 
-print("PASS: upstream default-key rejection, FinaSU release trust, preset isolation, and Image certificate gate")
+print("PASS: upstream default-key rejection, release trust, preset isolation, required preinit, and Image certificate gate")

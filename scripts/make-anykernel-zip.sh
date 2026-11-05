@@ -13,6 +13,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/lib/kpm-image.sh"
 # shellcheck source=lib/finasu-manager.sh
 . "${SCRIPT_DIR}/lib/finasu-manager.sh"
+# shellcheck source=lib/finasu-integration.sh
+. "${SCRIPT_DIR}/lib/finasu-integration.sh"
 
 : "${SOC:?}"
 : "${PROFILE_ID:?}"
@@ -73,7 +75,12 @@ fi
 ASSET_DIR="${GITHUB_WORKSPACE:-$(pwd)}/release-assets"
 KPM_ENABLED=false
 if [[ "$KSU_TYPE" == FinaSU ]]; then
+  if [[ "$KSU_COMMIT" != "$FINASU_COMMIT" ]]; then
+    echo "::error::FinaSU packaging requires the paired $FINASU_RELEASE source commit."
+    exit 1
+  fi
   verify_finasu_manager_binary "${SOC}/out/arch/arm64/boot/Image" "${SOC}/finasu-manager-proof.txt"
+  verify_finasu_preinit_binary "$SOC" "${SOC}/finasu-preinit-proof.txt" "${SOC}/out/arch/arm64/boot/Image"
 fi
 if [[ "$KSU_TYPE" == *KPM* ]]; then
   KPM_ENABLED=true
@@ -192,6 +199,10 @@ jq -n \
   --arg ksu_uapi_version "$KSU_UAPI_VERSION" \
   --arg ksu_uapi_patch_sha256 "$KSU_UAPI_PATCH_SHA256" \
   --arg manager_certificate_sha256 "$([[ "$KSU_TYPE" == FinaSU ]] && echo "$FINASU_MANAGER_CERT_SHA256" || true)" \
+  --arg manager_release "$([[ "$KSU_TYPE" == FinaSU ]] && echo "$FINASU_RELEASE" || true)" \
+  --arg manager_apk_url "$([[ "$KSU_TYPE" == FinaSU ]] && echo "$FINASU_MANAGER_URL" || true)" \
+  --arg manager_apk_sha256 "$([[ "$KSU_TYPE" == FinaSU ]] && echo "$FINASU_MANAGER_APK_SHA256" || true)" \
+  --arg finasu_compat_patch_sha256 "$([[ "$KSU_TYPE" == FinaSU ]] && sha256sum "${SCRIPT_DIR}/patches/finasu-netisolate-stack.patch" | awk '{print $1}' || true)" \
   --arg susfs_ref "$SUSFS_REF" \
   --arg susfs_commit "$SUSFS_COMMIT" \
   --arg susfs_version "$SUSFS_VERSION" \
@@ -236,6 +247,10 @@ jq -n \
     kernelsu_uapi_version: $ksu_uapi_version,
     kernelsu_uapi_patch_sha256: $ksu_uapi_patch_sha256,
     manager_certificate_sha256: $manager_certificate_sha256,
+    manager_reference_release: $manager_release,
+    manager_apk_url: $manager_apk_url,
+    manager_apk_sha256: $manager_apk_sha256,
+    finasu_compat_patch_sha256: $finasu_compat_patch_sha256,
     susfs_ref: $susfs_ref,
     susfs_commit: $susfs_commit,
     susfs_version: $susfs_version,
@@ -313,6 +328,18 @@ Use it only with a ROM build whose vendor modules match the source, branch, and 
 When ROM GKI module compatibility is enabled, protected-symbol enforcement is disabled so the ROM's system_dlkm modules may load with this custom Image. Their signatures cannot be authenticated by this Image's newly generated key. This is experimental and reduces GKI module protection.
 See \`build-info.json\` and \`SHA256SUMS\` for provenance and integrity data.
 EOF_NOTES
+
+if [[ "$KSU_TYPE" == FinaSU ]]; then
+  cat >> "$ASSET_DIR/release-notes.md" <<EOF_FINASU
+
+## FinaSU manager pairing
+
+Install the matching official [$FINASU_MANAGER_APK]($FINASU_MANAGER_URL) for this $FINASU_RELEASE driver.
+Manager APK SHA-256: \`$FINASU_MANAGER_APK_SHA256\`.
+The manager APK contains ksud; updating the kernel alone does not update the installed manager or userspace daemon.
+The Tracepoint backend and embedded preinit runner are required and checked during this build.
+EOF_FINASU
+fi
 
 (
   cd "$ASSET_DIR"

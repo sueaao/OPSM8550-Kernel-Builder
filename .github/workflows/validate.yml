@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   finasu-manager:
-    name: Verify FinaSU release manager authentication
+    name: Verify FinaSU release pairing and built-in integration
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Test upstream signature matching and artifact gate
+      - name: Test release APK, upstream signature matching, stack usage, and preinit gates
         run: bash scripts/tests/finasu-manager-test.sh
 
   uapi-backports:

@@ -69,17 +69,29 @@ Shell implementation used by the GitHub Actions workflows.
 `tests/profile-data-test.sh` verifies all supported profile mappings and keeps
 the workflow dropdown synchronized with the mapping library. It also checks
 representative root, Clang, KPM, SUSFS, NoMount, and Android version decisions.
-FinaSU coverage checks exact `master` resolution, checkout routing, required
+FinaSU coverage checks the exact reviewed release pin, checkout routing, required
 driver/manager config, and exclusion of the existing SUSFS patch pipeline.
 Its upstream-health entries compile the driver on 5.10, 5.15, and 6.1 profiles.
 `tests/finasu-manager-test.sh` runs the real pinned FinaSU Kbuild and certificate
-matcher against its public v1.2.1 release certificate. It reproduces rejection
+matcher against its public release certificate (unchanged from v1.2.1 to
+v1.4.5). It reproduces rejection
 with the upstream default key, verifies our release-slot arguments authorize
 FinaSU while other preset managers stay untrusted, and rejects an Image missing
 the release certificate hash. Each FinaSU build also runs this matcher test
 against the driver revision it actually checked out, before compiling the
 kernel. `lib/finasu-manager.sh` supplies the release identity to every make
 invocation; full builds and packaging independently verify the final Image.
+`lib/finasu-release.sh` keeps the source commit and matching APK URL/digest
+together. The same test job downloads the paired APK and checks its digest and
+APK v2 signer against the pinned identity with `tests/finasu-release-test.py`.
+`tests/finasu-integration-test.py` applies the guarded netisolate stack patch to
+the exact release, compiles the real cleanup function with its UAPI structures,
+reproduces the old 2 KiB stack-limit failure, and checks the corrected cleanup
+order. It also rejects source drift and missing, wrong-architecture, or
+unembedded preinit artifacts. `lib/finasu-integration.sh` applies that patch and
+checks preinit in smoke builds, full builds, and packaging. FinaSU config enables
+`CONFIG_HEADERS_INSTALL` and Tracepoint, disables debug/Inline, and installs UAPI
+headers before adding `KSU_REQUIRE_PREINIT=1` to subsequent make invocations.
 crDroid 13 coverage checks Android 17 branch inference, the pinned
 `clang-r584948` toolchain, automatic/manual resolver output for all three
 crDroid profiles, retained Android 16 selection, and Android 17 ZIP properties.

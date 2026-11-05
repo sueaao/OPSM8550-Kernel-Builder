@@ -48,6 +48,10 @@ jobs:
           - SM8650 | OnePlus 12 | LineageOS (recommended)
         include:
           - integration: FinaSU (experimental)
+            profile: SM7550 | OnePlus Nord CE4 | development
+          - integration: FinaSU (experimental)
+            profile: SM8550 | OnePlus 11 / 12R | crDroid
+          - integration: FinaSU (experimental)
             profile: SM8450 | OnePlus 10T / Ace Pro | LineageOS community
           - integration: FinaSU (experimental)
             profile: SM8550 | OnePlus 11 / 12R | LineageOS (recommended)
@@ -100,7 +104,8 @@ jobs:
             libssl-dev \
             lld \
             llvm \
-            patch
+            patch \
+            rsync
 
       - name: Apply integrations and validate config
         run: bash scripts/compile-kernel.sh

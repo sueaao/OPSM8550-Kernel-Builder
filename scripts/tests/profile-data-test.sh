@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/../lib/profile-data.sh"
 # shellcheck source=../lib/git-helpers.sh
 . "${SCRIPT_DIR}/../lib/git-helpers.sh"
+# shellcheck source=../lib/finasu-release.sh
+. "${SCRIPT_DIR}/../lib/finasu-release.sh"
 # shellcheck source=../lib/anykernel-helpers.sh
 . "${SCRIPT_DIR}/../lib/anykernel-helpers.sh"
 # shellcheck source=../lib/nomount-setup.sh
@@ -499,8 +501,8 @@ for argument in "$@"; do
   if [[ "$argument" == *-modules.git ]]; then
     commit=2222222222222222222222222222222222222222
   elif [[ "$argument" == https://github.com/LyraVoid/FinaSU.git ]]; then
-    [[ "${@: -1}" == refs/heads/master ]] || exit 2
-    commit=3333333333333333333333333333333333333333
+    echo 'FinaSU must use the reviewed release pin, not resolve a floating branch' >&2
+    exit 2
   fi
 done
 printf '%s\trefs/heads/%s\n' "$commit" "${@: -1}"
@@ -522,8 +524,8 @@ GITHUB_OUTPUT="$RESOLVER_FIXTURE_DIR/output" \
 GITHUB_STEP_SUMMARY="$RESOLVER_FIXTURE_DIR/summary" \
   bash "$RESOLVER_SCRIPT" > "$RESOLVER_FIXTURE_DIR/log"
 for expected_field in \
-  KSU_TYPE=FinaSU KSU_REPO=https://github.com/LyraVoid/FinaSU.git KSU_REF=master \
-  KSU_COMMIT=3333333333333333333333333333333333333333 \
+  KSU_TYPE=FinaSU KSU_REPO=https://github.com/LyraVoid/FinaSU.git "KSU_REF=$FINASU_RELEASE" \
+  "KSU_COMMIT=$FINASU_COMMIT" \
   SUSFS_COMMIT= NOMOUNT_COMMIT= ZEROMOUNT_COMMIT=; do
   grep -Fxq "$expected_field" "$RESOLVER_FIXTURE_DIR/env" \
     || fail "FinaSU resolver missing $expected_field"
@@ -1086,13 +1088,14 @@ chmod +x "$KPM_VERIFY_FIXTURE/toolchain/llvm-nm"
 (
   finasu_config="$RESOLVER_FIXTURE_DIR/finasu.config"
   printf '%s\n' CONFIG_KSU=m CONFIG_KPROBES=n CONFIG_EXT4_FS=m \
-    CONFIG_KALLSYMS_ALL=n CONFIG_KSU_SUSFS=y CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y > "$finasu_config"
+    CONFIG_KALLSYMS_ALL=n CONFIG_KSU_SUSFS=y CONFIG_KSU_HOOK_SUSFS_INLINE=y \
+    CONFIG_HEADERS_INSTALL=n CONFIG_KSU_DEBUG=y CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y > "$finasu_config"
   KSU_TYPE=FinaSU
   apply_variant_configs "$finasu_config"
-  for key in CONFIG_KSU CONFIG_KPROBES CONFIG_EXT4_FS CONFIG_KALLSYMS CONFIG_KALLSYMS_ALL CONFIG_KSU_DYNAMIC_MANAGER; do
+  for key in CONFIG_KSU CONFIG_KPROBES CONFIG_EXT4_FS CONFIG_KALLSYMS CONFIG_KALLSYMS_ALL CONFIG_KSU_DYNAMIC_MANAGER CONFIG_HEADERS_INSTALL CONFIG_KSU_HOOK_TRACEPOINT; do
     require_config_enabled "$finasu_config" "$key"
   done
-  for key in CONFIG_KSU_SUSFS CONFIG_KSU_DISABLE_MANAGER CONFIG_KSU_DISABLE_POLICY; do
+  for key in CONFIG_KSU_SUSFS CONFIG_KSU_HOOK_SUSFS_INLINE CONFIG_KSU_DEBUG CONFIG_KSU_DISABLE_MANAGER CONFIG_KSU_DISABLE_POLICY; do
     grep -Fxq "# $key is not set" "$finasu_config" || fail "FinaSU must disable $key"
   done
   config_hash="$(sha256sum "$finasu_config" | cut -d' ' -f1)"
@@ -1470,6 +1473,59 @@ grep -Fq 'Bundled MagiskBoot ABI: arm64' \
 grep -Fq 'Removing incompatible app-injected mkbootfs' \
   "$ANYKERNEL_PACKAGE_FIXTURE_DIR/work/AnyKernel3/META-INF/com/google/android/update-binary" \
   || fail "OnePlus 12 package does not remove an injected 32-bit mkbootfs"
+
+# Exercise real FinaSU packaging (including jq, ZIP and checksums) against the
+# local AnyKernel fixture, with an embedded ARM64 runner and release identity.
+python3 - "$ANYKERNEL_PACKAGE_FIXTURE_DIR/work/sm8550" "$FINASU_MANAGER_CERT_SHA256" <<'PY'
+from pathlib import Path
+import struct
+import sys
+root = Path(sys.argv[1])
+preinit = root / 'out/drivers/kernelsu/preinit'
+preinit.mkdir(parents=True)
+runner = bytearray(64)
+runner[:6] = b'\x7fELF\x02\x01'
+struct.pack_into('<HHIQ', runner, 16, 2, 183, 1, 0x400000)
+(preinit / 'runner.elf').write_bytes(runner)
+(preinit / 'blob.o').write_bytes(b'blob' + runner)
+(root / 'out/arch/arm64/boot/Image').write_bytes(b'\0' + sys.argv[2].encode() + b'\0' + runner)
+PY
+(
+  cd "$ANYKERNEL_PACKAGE_FIXTURE_DIR/work"
+  SOC=sm8550 \
+  PROFILE_ID=test-profile \
+  TARGET_NAME='Test target' \
+  DEVICE_CODENAMES=salami \
+  DEVICE_NAMES=salami \
+  SUPPORTED_ANDROID_VERSIONS=17 \
+  SOURCE_NAME=test \
+  KERNEL_BRANCH=17.0 \
+  MODULES_BRANCH=17.0 \
+  KERNEL_COMMIT=1111111111111111111111111111111111111111 \
+  MODULES_COMMIT=2222222222222222222222222222222222222222 \
+  CLANG_VERSION=test-clang \
+  KSU_TYPE=FinaSU \
+  KSU_REPO=https://github.com/LyraVoid/FinaSU.git \
+  KSU_REF="$FINASU_RELEASE" \
+  KSU_COMMIT="$FINASU_COMMIT" \
+  BUILD_TIMESTAMP=20260101_000003 \
+  GITHUB_WORKSPACE="$ANYKERNEL_PACKAGE_FIXTURE_DIR/work" \
+  GITHUB_ENV="$ANYKERNEL_PACKAGE_FIXTURE_DIR/work/github-env" \
+  GITHUB_OUTPUT="$ANYKERNEL_PACKAGE_FIXTURE_DIR/work/github-output" \
+  ANYKERNEL_REPO="$ANYKERNEL_PACKAGE_FIXTURE_DIR/source" \
+  ANYKERNEL_COMMIT="$ANYKERNEL_PACKAGE_COMMIT" \
+  bash "$ANYKERNEL_PACKAGE_SCRIPT" >/dev/null
+  cd release-assets
+  sha256sum --check SHA256SUMS >/dev/null
+  jq -e --arg release "$FINASU_RELEASE" --arg apk_hash "$FINASU_MANAGER_APK_SHA256" \
+    --arg commit "$FINASU_COMMIT" \
+    '.manager_reference_release == $release and .manager_apk_sha256 == $apk_hash and
+     .kernelsu_commit == $commit and (.finasu_compat_patch_sha256 | length) == 64' \
+    build-info.json >/dev/null || fail 'FinaSU package has incorrect release provenance'
+  unzip -p test-profile_FinaSU_111111111111_20260101_000003.zip build-info.json \
+    | cmp - build-info.json || fail 'FinaSU ZIP provenance differs from external build-info'
+  grep -Fq "$FINASU_MANAGER_URL" release-notes.md || fail 'FinaSU release notes omit the paired manager'
+)
 
 for i in "${!profiles[@]}"; do
   resolve_build_profile "${profiles[$i]}"
