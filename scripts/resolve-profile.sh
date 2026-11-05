@@ -120,7 +120,7 @@ case "$KSU_TYPE" in
     KSU_REPO="https://github.com/KOWX712/KernelSU.git"
     KSU_REF="master"
     ;;
-  FinaSU)
+  FinaSU|FinaSU-with-susfs|FinaSU-with-nomount|FinaSU-with-susfs-nomount)
     KSU_REPO="https://github.com/LyraVoid/FinaSU.git"
     KSU_REF="$FINASU_RELEASE"
     KSU_COMMIT="$FINASU_COMMIT"
@@ -165,6 +165,9 @@ if [[ "$KSU_TYPE" == *susfs* ]]; then
   SUSFS_MIN_VERSION="2.3.0"
   resolve_susfs_settings "$SOC" "$KERNEL_BRANCH"
   case "$KSU_TYPE" in
+    FinaSU-with-susfs|FinaSU-with-susfs-nomount)
+      SUSFS_COMMIT="$(finasu_susfs_commit "$SUSFS_REF")"
+      ;;
     SukiSU-Ultra-with-susfs-KPM|SukiSU-Ultra-with-susfs-nomount-KPM|SukiSU-Ultra-with-susfs-zeromount-KPM|BakaSU-with-susfs|BakaSU-with-susfs-nomount|BakaSU-with-susfs-zeromount)
       SUSFS_COMMIT="$(su_session_compatible_susfs_commit "$SUSFS_REF")"
       echo "::notice::Using su-session-compatible SUSFS v2.3.0 commit $SUSFS_COMMIT for $SUSFS_REF ($KSU_TYPE)."
@@ -199,9 +202,16 @@ NOMOUNT_REPO="https://github.com/maxsteeel/nomount.git"
 NOMOUNT_REF=""
 NOMOUNT_COMMIT=""
 if [[ "$KSU_TYPE" == *nomount* ]]; then
-  NOMOUNT_REF="master"
-  NOMOUNT_COMMIT="$(git_ls_remote_retry --exit-code "$NOMOUNT_REPO" "refs/heads/${NOMOUNT_REF}" \
-    | awk 'NR == 1 {print $1}')"
+  if [[ "$KSU_TYPE" == FinaSU* ]]; then
+    # Use FinaSU's vendored v22 driver, matching its Manager/ksud wire ABI.
+    NOMOUNT_REPO="$KSU_REPO"
+    NOMOUNT_REF="$FINASU_RELEASE:userspace/nomount"
+    NOMOUNT_COMMIT="$FINASU_COMMIT"
+  else
+    NOMOUNT_REF="master"
+    NOMOUNT_COMMIT="$(git_ls_remote_retry --exit-code "$NOMOUNT_REPO" "refs/heads/${NOMOUNT_REF}" \
+      | awk 'NR == 1 {print $1}')"
+  fi
   if [[ ! "$NOMOUNT_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
     echo "::error::Could not resolve NoMount branch '$NOMOUNT_REF' to a commit."
     exit 1
@@ -346,7 +356,7 @@ esac
   if [[ -n "$KSU_COMMIT" ]]; then
     echo "- KernelSU commit: \`${KSU_COMMIT}\` ($KSU_REF)"
   fi
-  if [[ "$KSU_TYPE" == FinaSU ]]; then
+  if [[ "$KSU_TYPE" == FinaSU* ]]; then
     echo "- FinaSU manager: [$FINASU_MANAGER_APK]($FINASU_MANAGER_URL)"
     echo "- Manager APK SHA-256: \`$FINASU_MANAGER_APK_SHA256\`"
   fi

@@ -452,11 +452,19 @@ apply_susfs_full() {
   cp ./susfs/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch "${ksu_repo_dir}/"
   mkdir -p "${ksu_kernel_dir}/include/linux"
   cp ./susfs/kernel_patches/include/linux/* "${ksu_kernel_dir}/include/linux/"
-  patch_kernelsu_for_susfs "${ksu_repo_dir}" "${ksu_kernel_dir}"
+  if [[ "$KSU_TYPE" == FinaSU* ]]; then
+    # FinaSU already implements the complete driver interface. The generic
+    # 10-patch replaces its hooks and must never be applied to this driver.
+    verify_finasu_susfs_inputs "$ksu_kernel_dir" susfs "$susfs_ref" "$susfs_commit"
+  else
+    patch_kernelsu_for_susfs "${ksu_repo_dir}" "${ksu_kernel_dir}"
+  fi
   if [[ "$KSU_TYPE" == BakaSU* ]]; then
     patch_bakasu_susfs_runtime_compat "${ksu_kernel_dir}"
   fi
-  patch_susfs_selinux_hide_compat "${ksu_kernel_dir}"
+  if [[ "$KSU_TYPE" != FinaSU* ]]; then
+    patch_susfs_selinux_hide_compat "${ksu_kernel_dir}"
+  fi
 
   test -f include/linux/susfs_def.h || {
     echo "::error::susfs_def.h was not copied into include/linux from $susfs_ref"

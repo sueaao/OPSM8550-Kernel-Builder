@@ -89,6 +89,9 @@ on:
           - KernelSU-Next + SUSFS + ZeroMount (experimental)
           - KowSU
           - FinaSU (experimental)
+          - FinaSU + SUSFS (experimental)
+          - FinaSU + NoMount (experimental)
+          - FinaSU + SUSFS + NoMount (experimental)
           - SukiSU Ultra + KPM (experimental)
           - SukiSU Ultra + SUSFS + KPM (experimental)
           - SukiSU Ultra + SUSFS + ZeroMount + KPM (experimental)

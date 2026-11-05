@@ -87,7 +87,7 @@ install_ksu_variant() {
       : "${KSU_COMMIT:?KSU_COMMIT must be resolved for KowSU}"
       setup_kernelsu_repo "KOWX712" "KernelSU" "$KSU_COMMIT"
       ;;
-    "FinaSU")
+    "FinaSU"|"FinaSU-with-susfs"|"FinaSU-with-nomount"|"FinaSU-with-susfs-nomount")
       : "${KSU_COMMIT:?KSU_COMMIT must be resolved for FinaSU}"
       setup_kernelsu_repo "LyraVoid" "FinaSU" "$KSU_COMMIT"
       ;;

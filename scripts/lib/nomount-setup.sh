@@ -61,6 +61,22 @@ install_nomount() {
   local ref="$2"
   local commit="$3"
   local repo_dir="NoMount"
+
+  rm -rf "$repo_dir"
+  git init -q "$repo_dir"
+  git -C "$repo_dir" remote add origin "$repo"
+  git_fetch_retry "$repo_dir" --depth=1 --no-tags origin "$commit"
+  git -C "$repo_dir" checkout -q --detach FETCH_HEAD
+  test "$(git -C "$repo_dir" rev-parse HEAD)" = "$commit" || {
+    echo "::error::NoMount checkout does not match resolved commit $commit ($ref)."
+    exit 1
+  }
+  wire_nomount_source "$repo_dir/kernel/src" "$ref" "$commit"
+}
+
+# Wire either an upstream checkout or FinaSU's ABI-matched vendored source.
+wire_nomount_source() {
+  local source_dir="$1" ref="$2" commit="$3"
   local fs_dir
   local kconfig_source
   local version
@@ -74,23 +90,13 @@ install_nomount() {
     exit 1
   fi
 
-  rm -rf "$repo_dir"
-  git init -q "$repo_dir"
-  git -C "$repo_dir" remote add origin "$repo"
-  git_fetch_retry "$repo_dir" --depth=1 --no-tags origin "$commit"
-  git -C "$repo_dir" checkout -q --detach FETCH_HEAD
-  test "$(git -C "$repo_dir" rev-parse HEAD)" = "$commit" || {
-    echo "::error::NoMount checkout does not match resolved commit $commit ($ref)."
-    exit 1
-  }
-
-  test -f "$repo_dir/kernel/src/nomount.c"
-  test -f "$repo_dir/kernel/src/nomount.h"
-  test -f "$repo_dir/kernel/src/Kconfig"
-  test -f "$repo_dir/kernel/src/Makefile"
+  test -f "$source_dir/nomount.c"
+  test -f "$source_dir/nomount.h"
+  test -f "$source_dir/Kconfig"
+  test -f "$source_dir/Makefile"
 
   rm -rf "$fs_dir/nomount"
-  ln -s "$(realpath --relative-to="$fs_dir" "$repo_dir/kernel/src")" "$fs_dir/nomount"
+  ln -s "$(realpath --relative-to="$fs_dir" "$source_dir")" "$fs_dir/nomount"
   ensure_line_in_file "$fs_dir/Makefile" 'obj-$(CONFIG_NOMOUNT) += nomount/'
   kconfig_source="source \"${fs_dir}/nomount/Kconfig\""
   insert_line_before_last_match "$fs_dir/Kconfig" "endmenu" "$kconfig_source" || {
@@ -98,7 +104,7 @@ install_nomount() {
     exit 1
   }
 
-  if ! version="$(detect_nomount_version "$repo_dir/kernel/src")"; then
+  if ! version="$(detect_nomount_version "$source_dir")"; then
     echo "::error::Could not detect the integrated NoMount version."
     exit 1
   fi

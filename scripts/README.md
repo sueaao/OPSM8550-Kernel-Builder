@@ -90,8 +90,17 @@ reproduces the old 2 KiB stack-limit failure, and checks the corrected cleanup
 order. It also rejects source drift and missing, wrong-architecture, or
 unembedded preinit artifacts. `lib/finasu-integration.sh` applies that patch and
 checks preinit in smoke builds, full builds, and packaging. FinaSU config enables
-`CONFIG_HEADERS_INSTALL` and Tracepoint, disables debug/Inline, and installs UAPI
-headers before adding `KSU_REQUIRE_PREINIT=1` to subsequent make invocations.
+`CONFIG_HEADERS_INSTALL`, disables debug, and installs UAPI headers before
+adding `KSU_REQUIRE_PREINIT=1` to subsequent make invocations. Base/NoMount-only
+presets use Tracepoint; SUSFS presets use the checked SUSFS Inline backend.
+`tests/finasu-features-test.sh` composes all four per-KMI SUSFS snapshots with
+the pinned driver. It checks Kconfig/command coverage, executes the real SUSFS
+reboot dispatcher (including root restrictions and FD cleanup), and checks the
+NoMount add/list/delete wire layouts against ksud. NoMount source integration
+is exercised in both `fs/` and `common/fs/` layouts with idempotence checks.
+`install_finasu_nomount` verifies the vendored v22 source digests and reuses the
+shared NoMount Kconfig/Makefile wiring. It avoids a floating driver update that
+could silently break FinaSU's userspace rule protocol.
 crDroid 13 coverage checks Android 17 branch inference, the pinned
 `clang-r584948` toolchain, automatic/manual resolver output for all three
 crDroid profiles, retained Android 16 selection, and Android 17 ZIP properties.

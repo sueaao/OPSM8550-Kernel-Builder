@@ -31,6 +31,13 @@ unchanged = subprocess.check_output([
     "finasu-test", str(helper),
 ], text=True)
 assert unchanged == "O=out\n"
+for variant in ("FinaSU-with-susfs", "FinaSU-with-nomount", "FinaSU-with-susfs-nomount"):
+    variant_args = subprocess.check_output([
+        "bash", "-c", '. "$1"; KSU_TYPE="$2"; MAKE_ARGS=(); '
+        'configure_finasu_manager >/dev/null; printf "%s\\n" "${MAKE_ARGS[@]}"',
+        "finasu-test", str(helper), variant,
+    ], text=True).splitlines()
+    assert variant_args == args, f"Release manager identity lost for {variant}"
 
 apk_sign = (source / "manager/apk_sign.c").read_text()
 table = apk_sign[apk_sign.index("typedef struct {"):apk_sign.index("struct sdesc {")]

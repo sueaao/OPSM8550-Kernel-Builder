@@ -4,7 +4,7 @@
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/finasu-release.sh"
 
 configure_finasu_manager() {
-  [[ "$KSU_TYPE" == FinaSU ]] || return 0
+  [[ "$KSU_TYPE" == FinaSU* ]] || return 0
 
   # Mirror upstream's release workflow. Kbuild selects slot 2 as the trusted
   # FinaSU identity only when it is explicitly marked as a release key.
